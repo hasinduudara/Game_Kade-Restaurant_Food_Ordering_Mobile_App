@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Gama-Kade",
-    "slug": "Gama-Kade",
+    "name": "Game-Kade",
+    "slug": "Game-Kade",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "gamakade",
+    "scheme": "gamekade",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
