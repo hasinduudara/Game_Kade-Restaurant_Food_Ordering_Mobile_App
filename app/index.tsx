@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import "../global.css";
 
 const { width } = Dimensions.get('window');
@@ -10,7 +11,8 @@ const { width } = Dimensions.get('window');
 export default function WelcomeScreen() {
 
     const handleStart = () => {
-        console.log("Navigating...");
+        router.replace('/(auth)/login');
+        console.log("Navigate to Login Screen");
     };
 
     return (
@@ -53,6 +55,7 @@ export default function WelcomeScreen() {
                 >
                     <TouchableOpacity
                         activeOpacity={0.9}
+                        onPress={handleStart}
                         className="w-full bg-[#FFF0E5] py-4 rounded-3xl items-center justify-center shadow-lg"
                     >
                         <Text className="text-[#FF4200] font-bold text-lg">
