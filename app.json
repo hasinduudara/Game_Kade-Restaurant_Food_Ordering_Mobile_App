@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Game-Kade",
-    "slug": "Game-Kade",
+    "slug": "game-kade",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.hasinduudara.gamekade",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -39,7 +40,8 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
