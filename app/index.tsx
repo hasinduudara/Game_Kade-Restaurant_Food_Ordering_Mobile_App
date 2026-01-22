@@ -1,27 +1,52 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Image, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebaseConfig';
 import "../global.css";
 
 const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
+    const [loading, setLoading] = useState(true); // Loading state for checking auth
+
+    useEffect(() => {
+        // Ckeck Firebase Auth State
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("User found, redirecting to Home...");
+                router.replace('/(tabs)/home');
+            } else {
+                setLoading(false);
+            }
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     const handleStart = () => {
         router.replace('/(auth)/login');
-        console.log("Navigate to Login Screen");
     };
 
+    // Show loading spinner while checking auth state
+    if (loading) {
+        return (
+            <View className="flex-1 justify-center items-center bg-[#D93800]">
+                <ActivityIndicator size="large" color="white" />
+            </View>
+        );
+    }
+
+    // Main Welcome Screen UI
     return (
         <LinearGradient
             colors={['#D93800', '#FF6F00', '#D93800']}
             locations={[0, 0.5, 1]}
             className="flex-1"
         >
-
             <SafeAreaView className="flex-1 justify-between items-center px-4 py-6">
                 <Animated.View
                     entering={FadeInDown.delay(100).springify()}

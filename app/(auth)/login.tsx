@@ -127,6 +127,8 @@ export default function LoginScreen() {
                 // Login Logic
                 await signInWithEmailAndPassword(auth, email, password);
                 router.replace('/(tabs)/home');
+                console.log("Logged in successfully");
+
             } else {
                 // Registration Logic
                 if (!fullName || !phone) {
