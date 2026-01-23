@@ -9,12 +9,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import "../../global.css"; // NativeWind CSS
+import "../../global.css";
 
 import { categories, foodItems } from '../../constants/menuData';
 
 export default function HomeScreen() {
-    const [activeCategory, setActiveCategory] = useState('Rice');
+    // 1. CHANGE: activeCategory eka ID widiyata hadanawa
+    const [activeCategoryId, setActiveCategoryId] = useState(1);
 
     return (
         <View className="flex-1 bg-gray-50">
@@ -51,6 +52,7 @@ export default function HomeScreen() {
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
                 {/* --- Banner --- */}
+                {/* Note: Banner image eka thama local file ekak widiyata thiyenne. Eka aulak na. */}
                 <View className="mx-6 mt-6 rounded-3xl overflow-hidden shadow-lg">
                     <LinearGradient
                         colors={['#D93800', '#FF6F00']}
@@ -65,7 +67,6 @@ export default function HomeScreen() {
                                 <Text className="text-[#D93800] font-bold">Order Now</Text>
                             </TouchableOpacity>
                         </View>
-                        {/* Banner Image (Burger) */}
                         <Image
                             source={require('../../assets/images/burger.png')}
                             className="w-24 h-24"
@@ -82,29 +83,32 @@ export default function HomeScreen() {
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
                     >
-                        {/* menuData.ts එකෙන් එන categories ටික මෙතන loop වෙනවා */}
-                        {categories.map((cat) => (
-                            <TouchableOpacity
-                                key={cat.id}
-                                onPress={() => setActiveCategory(cat.name)}
-                                className={`flex-row items-center p-3 rounded-full border ${
-                                    activeCategory === cat.name
-                                        ? 'bg-[#D93800] border-[#D93800]'
-                                        : 'bg-white border-gray-200'
-                                }`}
-                            >
-                                <View className={`p-2 rounded-full ${activeCategory === cat.name ? 'bg-white/20' : 'bg-gray-100'}`}>
-                                    <Ionicons
-                                        name={cat.icon as any}
-                                        size={20}
-                                        color={activeCategory === cat.name ? 'white' : 'gray'}
-                                    />
-                                </View>
-                                <Text className={`ml-2 font-semibold ${activeCategory === cat.name ? 'text-white' : 'text-gray-600'}`}>
-                                    {cat.name}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                        {categories.map((cat) => {
+                            // 2. CHANGE: Check karanne ID eken
+                            const isActive = activeCategoryId === cat.id;
+                            return (
+                                <TouchableOpacity
+                                    key={cat.id}
+                                    onPress={() => setActiveCategoryId(cat.id)} // ID eka set karanawa
+                                    className={`flex-row items-center p-3 rounded-full border ${
+                                        isActive
+                                            ? 'bg-[#D93800] border-[#D93800]'
+                                            : 'bg-white border-gray-200'
+                                    }`}
+                                >
+                                    <View className={`p-2 rounded-full ${isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
+                                        <Ionicons
+                                            name={cat.icon as any}
+                                            size={20}
+                                            color={isActive ? 'white' : 'gray'}
+                                        />
+                                    </View>
+                                    <Text className={`ml-2 font-semibold ${isActive ? 'text-white' : 'text-gray-600'}`}>
+                                        {cat.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </ScrollView>
                 </View>
 
@@ -117,38 +121,40 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* menuData.ts එකෙන් එන foodItems ටික මෙතන loop වෙනවා */}
-                    {foodItems.map((item) => (
-                        <TouchableOpacity
-                            key={item.id}
-                            activeOpacity={0.9}
-                            className="bg-white p-4 rounded-3xl mb-4 flex-row shadow-sm border border-gray-100 items-center"
-                        >
-                            <Image
-                                source={item.image}
-                                className="w-24 h-24 rounded-2xl"
-                                resizeMode="contain"
-                            />
-                            <View className="flex-1 ml-4">
-                                <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
-                                <Text className="text-gray-500 text-xs mt-1" numberOfLines={2}>
-                                    {item.description}
-                                </Text>
-                                <View className="flex-row justify-between items-center mt-3">
-                                    <Text className="text-[#D93800] font-extrabold text-lg">{item.price}</Text>
-                                    <View className="flex-row items-center bg-yellow-100 px-2 py-1 rounded-lg">
-                                        <Ionicons name="star" size={12} color="#D97706" />
-                                        <Text className="text-xs font-bold ml-1 text-yellow-700">{item.rating}</Text>
+                    {/* 3. CHANGE: Filter karala map karanawa */}
+                    {foodItems
+                        .filter((item) => item.categoryId === activeCategoryId) // Active category eke items witharak gannawa
+                        .map((item) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                activeOpacity={0.9}
+                                className="bg-white p-4 rounded-3xl mb-4 flex-row shadow-sm border border-gray-100 items-center"
+                            >
+                                {/* 4. CHANGE: source={{ uri: ... }} walata maru kara */}
+                                <Image
+                                    source={{ uri: item.image }}
+                                    className="w-24 h-24 rounded-2xl"
+                                    resizeMode="cover" // 'contain' wenuwata 'cover' damma lassanata penanna
+                                />
+                                <View className="flex-1 ml-4">
+                                    <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
+                                    <Text className="text-gray-500 text-xs mt-1" numberOfLines={2}>
+                                        {item.description}
+                                    </Text>
+                                    <View className="flex-row justify-between items-center mt-3">
+                                        <Text className="text-[#D93800] font-extrabold text-lg">{item.price}</Text>
+                                        <View className="flex-row items-center bg-yellow-100 px-2 py-1 rounded-lg">
+                                            <Ionicons name="star" size={12} color="#D97706" />
+                                            <Text className="text-xs font-bold ml-1 text-yellow-700">{item.rating}</Text>
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
 
-                            {/* Add Button */}
-                            <TouchableOpacity className="absolute bottom-4 right-4 bg-black p-2 rounded-full">
-                                <Ionicons name="add" size={20} color="white" />
+                                <TouchableOpacity className="absolute bottom-4 right-4 bg-black p-2 rounded-full">
+                                    <Ionicons name="add" size={20} color="white" />
+                                </TouchableOpacity>
                             </TouchableOpacity>
-                        </TouchableOpacity>
-                    ))}
+                        ))}
                 </View>
 
             </ScrollView>
