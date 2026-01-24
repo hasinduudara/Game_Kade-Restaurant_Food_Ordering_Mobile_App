@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    ScrollView,
-    Image,
-    TouchableOpacity,
-} from 'react-native';
+import { View, Text, TextInput, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import "../../global.css";
+import { router } from 'expo-router';
 
 import { categories, foodItems } from '../../constants/menuData';
 
 export default function HomeScreen() {
-    // 1. CHANGE: activeCategory eka ID widiyata hadanawa
     const [activeCategoryId, setActiveCategoryId] = useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // 2. Smart Filter Logic
+    const filteredFood = foodItems.filter((item) => {
+        // Filter for Search Query
+        if (searchQuery.length > 0) {
+            return item.name.toLowerCase().includes(searchQuery.toLowerCase());
+        }
+        return item.categoryId === activeCategoryId;
+    });
 
     return (
         <View className="flex-1 bg-gray-50">
@@ -42,17 +45,25 @@ export default function HomeScreen() {
                     <TextInput
                         placeholder="Search for food..."
                         className="flex-1 ml-2 text-gray-700 font-medium"
+                        value={searchQuery}
+                        onChangeText={(text) => setSearchQuery(text)}
                     />
-                    <TouchableOpacity>
-                        <Ionicons name="options-outline" size={20} color="#D93800" />
-                    </TouchableOpacity>
+                    {/* Clear Search bar */}
+                    {searchQuery.length > 0 ? (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={20} color="gray" />
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity>
+                            <Ionicons name="options-outline" size={20} color="#D93800" />
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
                 {/* --- Banner --- */}
-                {/* Note: Banner image eka thama local file ekak widiyata thiyenne. Eka aulak na. */}
                 <View className="mx-6 mt-6 rounded-3xl overflow-hidden shadow-lg">
                     <LinearGradient
                         colors={['#D93800', '#FF6F00']}
@@ -84,12 +95,14 @@ export default function HomeScreen() {
                         contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
                     >
                         {categories.map((cat) => {
-                            // 2. CHANGE: Check karanne ID eken
                             const isActive = activeCategoryId === cat.id;
                             return (
                                 <TouchableOpacity
                                     key={cat.id}
-                                    onPress={() => setActiveCategoryId(cat.id)} // ID eka set karanawa
+                                    onPress={() => {
+                                        setActiveCategoryId(cat.id);
+                                        setSearchQuery('');
+                                    }}
                                     className={`flex-row items-center p-3 rounded-full border ${
                                         isActive
                                             ? 'bg-[#D93800] border-[#D93800]'
@@ -115,26 +128,28 @@ export default function HomeScreen() {
                 {/* --- Popular Items List --- */}
                 <View className="mt-8 mb-24 px-6">
                     <View className="flex-row justify-between items-center mb-4">
-                        <Text className="text-lg font-bold text-gray-800">Popular Now</Text>
-                        <TouchableOpacity>
-                            <Text className="text-[#FF6F00] font-semibold">See all</Text>
-                        </TouchableOpacity>
+                        <Text className="text-lg font-bold text-gray-800">
+                            {searchQuery.length > 0 ? 'Search Results' : 'Popular Now'}
+                        </Text>
+                        {searchQuery.length === 0 && (
+                            <TouchableOpacity>
+                                <Text className="text-[#FF6F00] font-semibold">See all</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
-                    {/* 3. CHANGE: Filter karala map karanawa */}
-                    {foodItems
-                        .filter((item) => item.categoryId === activeCategoryId) // Active category eke items witharak gannawa
-                        .map((item) => (
+                    {/* Show filtered items */}
+                    {filteredFood.length > 0 ? (
+                        filteredFood.map((item) => (
                             <TouchableOpacity
                                 key={item.id}
                                 activeOpacity={0.9}
                                 className="bg-white p-4 rounded-3xl mb-4 flex-row shadow-sm border border-gray-100 items-center"
                             >
-                                {/* 4. CHANGE: source={{ uri: ... }} walata maru kara */}
                                 <Image
                                     source={{ uri: item.image }}
                                     className="w-24 h-24 rounded-2xl"
-                                    resizeMode="cover" // 'contain' wenuwata 'cover' damma lassanata penanna
+                                    resizeMode="cover"
                                 />
                                 <View className="flex-1 ml-4">
                                     <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
@@ -154,7 +169,14 @@ export default function HomeScreen() {
                                     <Ionicons name="add" size={20} color="white" />
                                 </TouchableOpacity>
                             </TouchableOpacity>
-                        ))}
+                        ))
+                    ) : (
+                        // Not Found View
+                        <View className="items-center mt-10">
+                            <Ionicons name="search-outline" size={50} color="#ccc" />
+                            <Text className="text-gray-400 mt-2">No food found!</Text>
+                        </View>
+                    )}
                 </View>
 
             </ScrollView>
