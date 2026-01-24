@@ -1,38 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { getUserData, logout } from '../../services/auth';
+
+import { logout } from '../../services/auth';
 import { uploadProfileImage } from '../../services/userService';
+import { useAuth } from '../../context/AuthContext';
 import "../../global.css";
 
 export default function ProfileScreen() {
-    const [user, setUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    // Get User Data from Context
+    const { user, refreshUserData } = useAuth();
     const [uploading, setUploading] = useState(false);
-
-    useEffect(() => {
-        loadUserProfile();
-    }, []);
-
-    const loadUserProfile = async () => {
-        const data = await getUserData();
-        setUser(data);
-        setLoading(false);
-    };
 
     // Image Upload Logic
     const pickImage = async () => {
-        // Get permission to access media library
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
             Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!');
             return;
         }
 
-        // Select image
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
@@ -48,11 +38,12 @@ export default function ProfileScreen() {
     const handleImageUpload = async (uri: string) => {
         setUploading(true);
         try {
-            // Upload image and get download URL
-            const downloadUrl = await uploadProfileImage(uri);
+            // Upload Image to Server
+            await uploadProfileImage(uri);
 
-            // Update user state with new photoURL
-            setUser({ ...user, photoURL: downloadUrl });
+            // Refresh User Data to get updated photoURL
+            await refreshUserData();
+
             Alert.alert("Success", "Profile Picture Updated!");
         } catch (error) {
             Alert.alert("Error", "Failed to upload image. Please try again.");
@@ -71,7 +62,8 @@ export default function ProfileScreen() {
         ]);
     };
 
-    if (loading) {
+    // Loading State
+    if (!user) {
         return (
             <View className="flex-1 justify-center items-center bg-gray-50">
                 <ActivityIndicator size="large" color="#D93800" />
