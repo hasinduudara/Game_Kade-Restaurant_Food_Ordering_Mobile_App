@@ -6,6 +6,7 @@ import "../../global.css";
 import { router } from 'expo-router';
 
 import { categories, foodItems } from '../../constants/menuData';
+import PromoCarousel from '../../components/PromoCarousel';
 
 export default function HomeScreen() {
     const [activeCategoryId, setActiveCategoryId] = useState(1);
@@ -64,27 +65,7 @@ export default function HomeScreen() {
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
                 {/* --- Banner --- */}
-                <View className="mx-6 mt-6 rounded-3xl overflow-hidden shadow-lg">
-                    <LinearGradient
-                        colors={['#D93800', '#FF6F00']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        className="p-6 flex-row items-center justify-between"
-                    >
-                        <View>
-                            <Text className="text-white text-xl font-bold">Special Offer!</Text>
-                            <Text className="text-yellow-200 text-3xl font-extrabold mt-1">30% OFF</Text>
-                            <TouchableOpacity className="bg-white px-4 py-2 rounded-full mt-3 self-start">
-                                <Text className="text-[#D93800] font-bold">Order Now</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <Image
-                            source={require('../../assets/images/burger.png')}
-                            className="w-24 h-24"
-                            resizeMode="contain"
-                        />
-                    </LinearGradient>
-                </View>
+                <PromoCarousel />
 
                 {/* --- Categories --- */}
                 <View className="mt-8">
