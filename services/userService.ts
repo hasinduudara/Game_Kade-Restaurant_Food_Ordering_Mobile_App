@@ -113,7 +113,7 @@ export const removeCard = async (cardData: any) => {
 };
 
 // 5. Update Address Function
-export const updateAddress = async (address: string) => {
+export const updateAddress = async (address: string, coords: { latitude: number; longitude: number }) => {
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("No user logged in");
@@ -121,7 +121,8 @@ export const updateAddress = async (address: string) => {
         const userDocRef = doc(db, "users", user.uid);
 
         await updateDoc(userDocRef, {
-            address: address
+            address: address,
+            location: coords // අලුතින් Coordinates සේව් කරනවා
         });
         return true;
     } catch (error) {

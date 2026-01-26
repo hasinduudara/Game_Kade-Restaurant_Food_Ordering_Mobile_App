@@ -51,7 +51,7 @@ export default function ProfileScreen() {
             await uploadProfileImage(uri);
             await refreshUserData();
             Alert.alert("Success", "Profile Picture Updated!");
-        } catch (error) {
+        } catch {
             Alert.alert("Error", "Failed to upload image.");
         } finally {
             setUploading(false);
@@ -95,7 +95,7 @@ export default function ProfileScreen() {
             setShowCardModal(false);
             setCardNumber(''); setCardExpiry(''); setCardCVC(''); setCardName('');
             Alert.alert("Success", "Card Added!");
-        } catch (error) {
+        } catch {
             Alert.alert("Error", "Failed to add card");
         }
     };
@@ -115,7 +115,7 @@ export default function ProfileScreen() {
             await refreshUserData();
             setShowEditModal(false);
             Alert.alert("Success", "Profile Updated!");
-        } catch (error) {
+        } catch {
             Alert.alert("Error", "Update failed.");
         }
     };
@@ -123,11 +123,13 @@ export default function ProfileScreen() {
     const handleUpdateAddress = async () => {
         if(!newAddress) return Alert.alert("Error", "Address required");
         try {
-            await updateAddress(newAddress);
+            // Using default coordinates (0,0) since we're updating text only
+            // User should use map for full address with coordinates
+            await updateAddress(newAddress, { latitude: 0, longitude: 0 });
             await refreshUserData();
             setShowAddressModal(false);
             Alert.alert("Success", "Address Updated!");
-        } catch (error) {
+        } catch {
             Alert.alert("Error", "Update failed.");
         }
     };
@@ -166,10 +168,18 @@ export default function ProfileScreen() {
                 {/* Address Section */}
                 <View className="mb-6">
                     <Text className="text-gray-800 font-bold text-lg mb-3">Delivery Address</Text>
-                    <TouchableOpacity onPress={() => { setNewAddress(user?.address || ''); setShowAddressModal(true); }} className="bg-white p-4 rounded-2xl flex-row items-center shadow-sm border border-gray-100">
+                    <TouchableOpacity
+                        onPress={() => router.push('/map')}
+                        className="bg-white p-4 rounded-2xl flex-row items-center shadow-sm border border-gray-100"
+                    >
                         <View className="bg-orange-100 p-2 rounded-full"><Ionicons name="location" size={24} color="#D93800" /></View>
-                        <View className="flex-1 ml-3"><Text className="text-gray-800 font-medium" numberOfLines={1}>{user?.address || "Set Default Location"}</Text><Text className="text-gray-400 text-xs">Tap to edit address</Text></View>
-                        <Ionicons name="pencil" size={20} color="gray" />
+                        <View className="flex-1 ml-3">
+                            <Text className="text-gray-800 font-medium" numberOfLines={1}>
+                                {user?.address || "Set Default Location"}
+                            </Text>
+                            <Text className="text-gray-400 text-xs">Tap to update on map</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color="gray" />
                     </TouchableOpacity>
                 </View>
 
