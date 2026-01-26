@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import {View, Text, TextInput, ScrollView, Image, TouchableOpacity, Alert} from 'react-native';
+import { View, Text, TextInput, ScrollView, Image, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import "../../global.css";
 import { router } from 'expo-router';
@@ -12,11 +12,12 @@ import { useCart } from '../../context/CartContext';
 export default function HomeScreen() {
     const { user } = useAuth();
     const { addToCart } = useCart();
-
     const [activeCategoryId, setActiveCategoryId] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [lastAddedItem, setLastAddedItem] = useState<any>(null);
 
-    // 2. Filter food items based on active category or search query
+    // Filter Logic
     const filteredFood = foodItems.filter((item) => {
         if (searchQuery.length > 0) {
             return item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -24,10 +25,11 @@ export default function HomeScreen() {
         return item.categoryId === activeCategoryId;
     });
 
-    // 3. Handle Quick Add to Cart
+    // 3. Handle Quick Add
     const handleQuickAdd = (item: any) => {
         addToCart(item);
-        Alert.alert("Added!", `${item.name} added to your cart.`);
+        setLastAddedItem(item);
+        setShowSuccessModal(true);
     };
 
     return (
@@ -97,7 +99,7 @@ export default function HomeScreen() {
                     </ScrollView>
                 </View>
 
-                {/* Popular Items List (Redesigned Cards) */}
+                {/* Popular Items List */}
                 <View className="mt-8 mb-24 px-6">
                     <View className="flex-row justify-between items-center mb-4">
                         <Text className="text-lg font-bold text-gray-800">{searchQuery.length > 0 ? 'Search Results' : 'Popular Now'}</Text>
@@ -116,17 +118,12 @@ export default function HomeScreen() {
                                 className="bg-white rounded-3xl mb-4 shadow-sm border border-gray-100 overflow-hidden"
                             >
                                 <View className="flex-row p-3">
-                                    {/* Image */}
                                     <Image source={{ uri: item.image }} className="w-28 h-28 rounded-2xl bg-gray-100" resizeMode="cover" />
-
-                                    {/* Content */}
                                     <View className="flex-1 ml-3 justify-between py-1">
                                         <View>
                                             <Text className="text-lg font-bold text-gray-800 leading-6" numberOfLines={1}>{item.name}</Text>
                                             <Text className="text-gray-500 text-xs mt-1 leading-4" numberOfLines={2}>{item.description}</Text>
                                         </View>
-
-                                        {/* Price & Action Row (Improved Layout) */}
                                         <View className="flex-row justify-between items-end mt-2">
                                             <View>
                                                 <Text className="text-[#D93800] font-extrabold text-xl">{item.price}</Text>
@@ -136,7 +133,7 @@ export default function HomeScreen() {
                                                 </View>
                                             </View>
 
-                                            {/* Add Button (Now part of the layout, not absolute) */}
+                                            {/* Quick Add Button */}
                                             <TouchableOpacity
                                                 onPress={() => handleQuickAdd(item)}
                                                 className="bg-black p-3 rounded-2xl"
@@ -156,6 +153,48 @@ export default function HomeScreen() {
                     )}
                 </View>
             </ScrollView>
+
+            {/* 👇 4. Success Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={showSuccessModal}
+                onRequestClose={() => setShowSuccessModal(false)}
+            >
+                <View className="flex-1 justify-center items-center bg-black/60">
+                    <View className="bg-white w-[85%] p-6 rounded-3xl items-center shadow-2xl">
+
+                        {/* Success Icon */}
+                        <View className="bg-green-100 p-4 rounded-full mb-4">
+                            <Ionicons name="checkmark-circle" size={60} color="#22c55e" />
+                        </View>
+
+                        <Text className="text-2xl font-bold text-gray-800 mb-2">Added to Cart!</Text>
+                        <Text className="text-gray-500 text-center mb-6">
+                            {lastAddedItem?.name} has been added to your cart.
+                        </Text>
+
+                        {/* Buttons */}
+                        <View className="w-full gap-3">
+                            <TouchableOpacity
+                                onPress={() => { setShowSuccessModal(false); router.push('/(tabs)/cart'); }}
+                                className="bg-[#D93800] w-full py-3 rounded-xl items-center"
+                            >
+                                <Text className="text-white font-bold text-lg">Go to Cart</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => setShowSuccessModal(false)}
+                                className="bg-gray-100 w-full py-3 rounded-xl items-center"
+                            >
+                                <Text className="text-gray-700 font-bold text-lg">Keep Shopping</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                    </View>
+                </View>
+            </Modal>
+
         </View>
     );
 }
