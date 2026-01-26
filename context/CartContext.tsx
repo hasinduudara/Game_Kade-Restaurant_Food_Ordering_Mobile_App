@@ -1,25 +1,24 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-// 1. Define the shape of a Cart Item
+// 1. Cart Item
 export type CartItem = {
     id: number | string;
     name: string;
-    price: string; // Keep as string to match your data (e.g., "Rs. 1500.00")
+    price: string;
     image: any;
     quantity: number;
 };
 
-// 2. Define the Context Type (Functions & Data available to the app)
+// 2. Context Type
 type CartContextType = {
     items: CartItem[];
-    addToCart: (item: any) => void;
+    addToCart: (item: any, qty?: number) => void;
     removeFromCart: (id: number | string) => void;
     updateQuantity: (id: number | string, action: 'increase' | 'decrease') => void;
     getTotalPrice: () => number;
     cartCount: number;
 };
 
-// Create Context
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 // 3. Provider Component
@@ -27,31 +26,26 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const [items, setItems] = useState<CartItem[]>([]);
 
     // Function: Add item to cart
-    const addToCart = (product: any) => {
+    const addToCart = (product: any, qty: number = 1) => {
         setItems((prevItems) => {
-            // Check if item already exists
             const existingItem = prevItems.find((item) => item.id === product.id);
 
             if (existingItem) {
-                // If exists, increase quantity
                 return prevItems.map((item) =>
                     item.id === product.id
-                        ? { ...item, quantity: item.quantity + 1 }
+                        ? { ...item, quantity: item.quantity + qty }
                         : item
                 );
             } else {
-                // If new, add to array with quantity 1
-                return [...prevItems, { ...product, quantity: 1 }];
+                return [...prevItems, { ...product, quantity: qty }];
             }
         });
     };
 
-    // Function: Remove item completely
     const removeFromCart = (id: number | string) => {
         setItems((prevItems) => prevItems.filter((item) => item.id !== id));
     };
 
-    // Function: Increase or Decrease quantity
     const updateQuantity = (id: number | string, action: 'increase' | 'decrease') => {
         setItems((prevItems) => {
             return prevItems.map((item) => {
@@ -64,11 +58,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         });
     };
 
-    // Function: Calculate Total Price
+    // Total Price Calculation
     const getTotalPrice = () => {
         return items.reduce((total, item) => {
-            // Clean price string (remove "Rs.", "," and spaces) -> "Rs. 1,500.00" to 1500.00
-            const priceNumber = parseFloat(item.price.replace(/[^0-9.]/g, ''));
+            let cleanPrice = item.price.toLowerCase().replace('rs.', '').replace('rs', '');
+            cleanPrice = cleanPrice.replace(/[^0-9.]/g, '');
+            const priceNumber = parseFloat(cleanPrice) || 0;
             return total + (priceNumber * item.quantity);
         }, 0);
     };
@@ -87,7 +82,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
-// Custom Hook to use the Cart Context
 export const useCart = () => {
     const context = useContext(CartContext);
     if (!context) throw new Error("useCart must be used within a CartProvider");

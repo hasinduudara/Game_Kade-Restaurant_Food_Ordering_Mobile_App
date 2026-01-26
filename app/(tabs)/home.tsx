@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Image, TouchableOpacity } from 'react-native';
+import {View, Text, TextInput, ScrollView, Image, TouchableOpacity, Alert} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import "../../global.css";
 import { router } from 'expo-router';
@@ -7,18 +7,28 @@ import { router } from 'expo-router';
 import { categories, foodItems } from '../../constants/menuData';
 import PromoCarousel from '../../components/PromoCarousel';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 
 export default function HomeScreen() {
     const { user } = useAuth();
+    const { addToCart } = useCart();
+
     const [activeCategoryId, setActiveCategoryId] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // 2. Filter food items based on active category or search query
     const filteredFood = foodItems.filter((item) => {
         if (searchQuery.length > 0) {
             return item.name.toLowerCase().includes(searchQuery.toLowerCase());
         }
         return item.categoryId === activeCategoryId;
     });
+
+    // 3. Handle Quick Add to Cart
+    const handleQuickAdd = (item: any) => {
+        addToCart(item);
+        Alert.alert("Added!", `${item.name} added to your cart.`);
+    };
 
     return (
         <View className="flex-1 bg-gray-50">
@@ -127,7 +137,10 @@ export default function HomeScreen() {
                                             </View>
 
                                             {/* Add Button (Now part of the layout, not absolute) */}
-                                            <TouchableOpacity className="bg-black p-3 rounded-2xl">
+                                            <TouchableOpacity
+                                                onPress={() => handleQuickAdd(item)}
+                                                className="bg-black p-3 rounded-2xl"
+                                            >
                                                 <Ionicons name="add" size={20} color="white" />
                                             </TouchableOpacity>
                                         </View>
