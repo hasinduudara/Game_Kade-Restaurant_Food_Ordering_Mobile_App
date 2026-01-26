@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { CartProvider } from '../context/CartContext';
 import "../global.css";
 import { View, ActivityIndicator } from 'react-native';
 
@@ -32,10 +33,11 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
     return (
-        // Wrap with AuthProvider
         <AuthProvider>
-            <StatusBar style="light" backgroundColor="#000000" />
-            <RootLayoutNav />
+            <CartProvider>
+                <StatusBar style="light" backgroundColor="#000000" />
+                <RootLayoutNav />
+            </CartProvider>
         </AuthProvider>
     );
 }
