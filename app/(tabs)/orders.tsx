@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
@@ -31,6 +31,15 @@ export default function OrdersScreen() {
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [ratingStar, setRatingStar] = useState(0);
 
+    // 👇 1. Custom Alert State (අලුතින් එකතු කළා)
+    const [alertConfig, setAlertConfig] = useState({
+        visible: false,
+        title: "",
+        message: "",
+        type: "success", // success or info
+        onClose: () => {}
+    });
+
     // Tracking States
     const [orderStatus, setOrderStatus] = useState("Preparing");
     const [riderLoc, setRiderLoc] = useState(RESTAURANT_LOC);
@@ -46,6 +55,20 @@ export default function OrdersScreen() {
         }
     }, [params.view, activeOrder, items.length]);
 
+    // --- HELPER: Show Custom Alert ---
+    const showCustomAlert = (title: string, message: string, callback?: () => void) => {
+        setAlertConfig({
+            visible: true,
+            title,
+            message,
+            type: "success",
+            onClose: () => {
+                setAlertConfig(prev => ({ ...prev, visible: false }));
+                if (callback) callback();
+            }
+        });
+    };
+
     // --- HANDLERS ---
 
     const handleCancel = () => {
@@ -55,26 +78,30 @@ export default function OrdersScreen() {
 
     const handlePayment = (method: string) => {
         setShowPaymentModal(false);
-        Alert.alert("Order Placed", `Paid via ${method}.`);
 
-        const newOrder: Order = {
-            id: Math.random().toString(36).substr(2, 9).toUpperCase(),
-            items: [...items],
-            total: getTotalPrice(),
-            date: new Date().toLocaleString(),
-            status: 'Preparing',
-            deliveryDetails: {
-                name: tempName,
-                phone: tempPhone,
-                address: tempAddress,
-                paymentMethod: method
-            }
-        };
+        // 👇 2. Alert එක වෙනුවට Custom Alert එක පාවිච්චි කළා
+        showCustomAlert("Order Placed!", `Paid via ${method}. Waiting for restaurant confirmation.`, () => {
 
-        setActiveOrder(newOrder);
-        clearCart();
-        setViewMode('tracking');
-        startOrderSimulation();
+            // Alert එක OK කළාම තමයි Order එක හැදෙන්නේ
+            const newOrder: Order = {
+                id: Math.random().toString(36).substr(2, 9).toUpperCase(),
+                items: [...items],
+                total: getTotalPrice(),
+                date: new Date().toLocaleString(),
+                status: 'Preparing',
+                deliveryDetails: {
+                    name: tempName,
+                    phone: tempPhone,
+                    address: tempAddress,
+                    paymentMethod: method
+                }
+            };
+
+            setActiveOrder(newOrder);
+            clearCart();
+            setViewMode('tracking');
+            startOrderSimulation();
+        });
     };
 
     const startOrderSimulation = () => {
@@ -82,10 +109,12 @@ export default function OrdersScreen() {
         setRiderLoc(RESTAURANT_LOC);
 
         setTimeout(() => {
-            Alert.alert("Order Ready", "Your food is ready! Rider is coming.");
-            setOrderStatus("Delivering");
-            startRiderMovement();
-        }, 10000);
+            // 👇 3. Order Ready Alert එකත් ලස්සන කළා
+            showCustomAlert("Order Ready!", "Your food is ready! The rider is picking it up.", () => {
+                setOrderStatus("Delivering");
+                startRiderMovement();
+            });
+        }, 10000); // 10 seconds simulation
     };
 
     const startRiderMovement = () => {
@@ -197,22 +226,23 @@ export default function OrdersScreen() {
                         </View>
                     </View>
                 </Modal>
+
+                {/* 👇 Custom Alert Modal එක මෙතනත් Render වෙන්න ඕන (Modal එක උඩින් පේන්න) */}
+                {renderCustomAlert()}
             </View>
         );
     }
 
-    // TRACKING VIEW (OpenStreetMap)
+    // TRACKING VIEW
     if (viewMode === 'tracking' && activeOrder) {
         return (
             <View className="flex-1 bg-white">
                 <View className="h-[60%] w-full">
-                    {/* OpenStreetMap*/}
                     <MapView
                         style={{ flex: 1 }}
-                        mapType="none" // Google/Apple Map එක හංගනවා
+                        mapType="none"
                         initialRegion={{ ...RESTAURANT_LOC, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
                     >
-                        {/* Add OpenStreetMap Tiles */}
                         <UrlTile
                             urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             maximumZ={19}
@@ -273,6 +303,9 @@ export default function OrdersScreen() {
                         </View>
                     </View>
                 </Modal>
+
+                {/* 👇 Custom Alert Modal (Tracking View එකටත්) */}
+                {renderCustomAlert()}
             </View>
         );
     }
@@ -315,4 +348,35 @@ export default function OrdersScreen() {
             )}
         </View>
     );
+
+    // 👇 4. Reusable Custom Alert Component
+    function renderCustomAlert() {
+        return (
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={alertConfig.visible}
+                onRequestClose={() => {}}
+            >
+                <View className="flex-1 justify-center items-center bg-black/60">
+                    <View className="bg-white w-[85%] p-6 rounded-3xl items-center shadow-2xl">
+                        {/* Success Icon */}
+                        <View className="bg-green-100 p-4 rounded-full mb-4">
+                            <Ionicons name="checkmark-circle" size={50} color="#22c55e" />
+                        </View>
+
+                        <Text className="text-2xl font-bold text-gray-800 mb-2">{alertConfig.title}</Text>
+                        <Text className="text-gray-500 text-center mb-6">{alertConfig.message}</Text>
+
+                        <TouchableOpacity
+                            onPress={alertConfig.onClose}
+                            className="bg-black w-full py-3 rounded-xl items-center"
+                        >
+                            <Text className="text-white font-bold text-lg">OK</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        );
+    }
 }
