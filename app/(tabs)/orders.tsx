@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView, ActivityIndicator, Animated, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
+import * as Location from 'expo-location';
 
 import { useCart } from '../../context/CartContext';
 import { useOrders, Order } from '../../context/OrderContext';
@@ -29,8 +30,7 @@ export default function OrdersScreen() {
     // Location Picker States
     const [showMapPicker, setShowMapPicker] = useState(false);
     const [selectedCoords, setSelectedCoords] = useState(DEFAULT_LOC);
-    const [searchText, setSearchText] = useState('');
-    const [isSearching, setIsSearching] = useState(false);
+    const [loadingLocation, setLoadingLocation] = useState(false);
 
     // Modal States
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -72,51 +72,42 @@ export default function OrdersScreen() {
         });
     };
 
-    // --- SEARCH LOCATION ---
-    const searchLocation = async () => {
-        if (!searchText.trim()) return;
-        setIsSearching(true);
+    // GET CURRENT LOCATION FUNCTION
+    const getUserLocation = async () => {
+        setLoadingLocation(true);
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchText)}&countrycodes=lk`);
-            const data = await response.json();
-            if (data && data.length > 0) {
-                const lat = parseFloat(data[0].lat);
-                const lon = parseFloat(data[0].lon);
-                setSelectedCoords({ latitude: lat, longitude: lon });
-                fetchAddressFromOSM(lat, lon);
-            } else {
-                Alert.alert("Not Found", "Location not found.");
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Allow location access to select delivery point.');
+                setLoadingLocation(false);
+                return;
             }
-        } catch {
-            Alert.alert("Error", "Could not search location.");
+
+            let location = await Location.getCurrentPositionAsync({});
+            const currentCoords = {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude
+            };
+
+            setSelectedCoords(currentCoords);
+
+        } catch (error) {
+            Alert.alert("Error", "Could not get current location.");
         } finally {
-            setIsSearching(false);
+            setLoadingLocation(false);
         }
     };
 
-    // --- REVERSE GEOCODING ---
-    const fetchAddressFromOSM = async (lat: number, lng: number) => {
-        try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`,
-                { headers: { 'User-Agent': 'GameKade-App/1.0' } }
-            );
-            const data = await response.json();
-            if (data && data.display_name) {
-                const addObj = data.address;
-                const shortAddress = `${addObj.road || ''} ${addObj.suburb || ''} ${addObj.city || addObj.town || ''}`;
-                setTempAddress(shortAddress.trim() === '' ? data.display_name.split(',')[0] : shortAddress);
-            }
-        } catch (err) {
-            console.log("Address fetch error", err);
-        }
+    // OPEN MAP & GET LOCATION
+    const openMapPicker = () => {
+        setShowMapPicker(true);
+        getUserLocation();
     };
 
     // --- HANDLERS ---
     const handleMapPress = (e: any) => {
         const coords = e.nativeEvent.coordinate;
         setSelectedCoords(coords);
-        fetchAddressFromOSM(coords.latitude, coords.longitude);
     };
 
     const handleCancel = () => {
@@ -127,7 +118,6 @@ export default function OrdersScreen() {
     const handlePayment = (method: string) => {
         setShowPaymentModal(false);
 
-        // Show Custom Alert
         showCustomAlert("Order Placed!", `Paid via ${method}. Waiting for restaurant confirmation.`, () => {
             const newOrder: Order = {
                 id: Math.random().toString(36).substr(2, 9).toUpperCase(),
@@ -156,7 +146,6 @@ export default function OrdersScreen() {
         setRiderLoc(RESTAURANT_LOC);
 
         setTimeout(() => {
-            // Show Custom Alert
             showCustomAlert("Order Ready!", "Your food is ready! The rider is picking it up.", () => {
                 setOrderStatus("Delivering");
                 startRiderMovement(targetLoc);
@@ -195,7 +184,7 @@ export default function OrdersScreen() {
 
     // --- VIEWS ---
 
-    // 1. SUMMARY VIEW
+    // SUMMARY VIEW
     if (viewMode === 'summary') {
         return (
             <View className="flex-1 bg-white pt-12 px-6">
@@ -224,7 +213,7 @@ export default function OrdersScreen() {
         );
     }
 
-    // 2. DETAILS VIEW
+    // DETAILS VIEW
     if (viewMode === 'details') {
         return (
             <View className="flex-1 bg-white pt-12 px-6">
@@ -242,7 +231,8 @@ export default function OrdersScreen() {
                             <Ionicons name="location" size={24} color="#D93800" />
                             <TextInput value={tempAddress} onChangeText={setTempAddress} className="flex-1 ml-2 text-lg text-gray-800" multiline placeholder="Type address or pick on map ->" />
                         </View>
-                        <TouchableOpacity onPress={() => setShowMapPicker(true)} className="bg-black w-14 justify-center items-center rounded-xl">
+                        {/* Button to Open Map Picker */}
+                        <TouchableOpacity onPress={openMapPicker} className="bg-black w-14 justify-center items-center rounded-xl">
                             <Ionicons name="map" size={24} color="white" />
                         </TouchableOpacity>
                     </View>
@@ -256,24 +246,43 @@ export default function OrdersScreen() {
                     </TouchableOpacity>
                 </ScrollView>
 
+                {/* --- UPDATED LOCATION PICKER MODAL --- */}
                 <Modal visible={showMapPicker} animationType="slide">
                     <View className="flex-1 bg-white">
-                        <View className="absolute top-10 left-4 right-4 z-10 flex-row gap-2">
-                            <View className="flex-1 bg-white flex-row items-center p-3 rounded-full shadow-md">
-                                <Ionicons name="search" size={20} color="gray" />
-                                <TextInput placeholder="Search (e.g. Kandy)" value={searchText} onChangeText={setSearchText} className="flex-1 ml-2" />
-                                {isSearching && <ActivityIndicator size="small" color="#D93800" />}
-                            </View>
-                            <TouchableOpacity onPress={searchLocation} className="bg-black p-3 rounded-full justify-center items-center"><Text className="text-white font-bold text-xs">GO</Text></TouchableOpacity>
-                        </View>
-                        <MapView style={{ flex: 1 }} mapType="none" region={{ latitude: selectedCoords.latitude, longitude: selectedCoords.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 }} onPress={handleMapPress}>
-                            <UrlTile urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} zIndex={-1} />
-                            <Marker coordinate={selectedCoords} pinColor="red" />
+
+                        {/* Map View - Default (Google/Apple) */}
+                        <MapView
+                            style={{ flex: 1 }}
+                            showsUserLocation={true}
+                            region={{
+                                latitude: selectedCoords.latitude,
+                                longitude: selectedCoords.longitude,
+                                latitudeDelta: 0.01,
+                                longitudeDelta: 0.01,
+                            }}
+                            onPress={handleMapPress}
+                        >
+                            {/* UrlTile ඉවත් කළා */}
+                            <Marker coordinate={selectedCoords} pinColor="red" title="Delivery Location" />
                         </MapView>
+
+                        {/* Loading Indicator for Location */}
+                        {loadingLocation && (
+                            <View className="absolute top-20 self-center bg-white px-4 py-2 rounded-full shadow-md flex-row items-center">
+                                <ActivityIndicator size="small" color="#D93800" />
+                                <Text className="ml-2 font-bold text-gray-600">Locating you...</Text>
+                            </View>
+                        )}
+
                         <View className="absolute bottom-8 left-6 right-6">
-                            <TouchableOpacity onPress={() => setShowMapPicker(false)} className="bg-[#D93800] py-4 rounded-xl items-center shadow-lg"><Text className="text-white font-bold text-lg">Confirm Location</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowMapPicker(false)} className="bg-[#D93800] py-4 rounded-xl items-center shadow-lg">
+                                <Text className="text-white font-bold text-lg">Confirm Location</Text>
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity onPress={() => setShowMapPicker(false)} className="absolute top-12 left-4 bg-white p-2 rounded-full shadow-md mt-12"><Ionicons name="close" size={20} color="black" /></TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => setShowMapPicker(false)} className="absolute top-12 left-4 bg-white p-2 rounded-full shadow-md mt-12">
+                            <Ionicons name="close" size={20} color="black" />
+                        </TouchableOpacity>
                     </View>
                 </Modal>
 
@@ -292,14 +301,13 @@ export default function OrdersScreen() {
         );
     }
 
-    // 3. TRACKING VIEW
+    // TRACKING VIEW
     if (viewMode === 'tracking' && activeOrder) {
         const targetCoords = activeOrder.deliveryDetails?.coordinates || selectedCoords;
         return (
             <View className="flex-1 bg-white">
                 <View className="h-[60%] w-full">
-                    <MapView style={{ flex: 1 }} mapType="none" initialRegion={{ latitude: (RESTAURANT_LOC.latitude + targetCoords.latitude) / 2, longitude: (RESTAURANT_LOC.longitude + targetCoords.longitude) / 2, latitudeDelta: 0.08, longitudeDelta: 0.08 }}>
-                        <UrlTile urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} zIndex={-1} />
+                    <MapView style={{ flex: 1 }} initialRegion={{ latitude: (RESTAURANT_LOC.latitude + targetCoords.latitude) / 2, longitude: (RESTAURANT_LOC.longitude + targetCoords.longitude) / 2, latitudeDelta: 0.08, longitudeDelta: 0.08 }}>
                         <Marker coordinate={RESTAURANT_LOC} title="Restaurant" pinColor="red" />
                         <Marker coordinate={targetCoords} title="Delivery Location" pinColor="blue" />
                         {orderStatus === 'Delivering' && (<Marker coordinate={riderLoc} title="Rider"><Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3063/3063823.png' }} style={{ width: 40, height: 40 }} /></Marker>)}
@@ -336,7 +344,7 @@ export default function OrdersScreen() {
         );
     }
 
-    // 4. HISTORY VIEW (With Loading)
+    // HISTORY VIEW (With Loading)
     return (
         <View className="flex-1 bg-gray-50 pt-12 px-6">
             <View className="flex-row justify-between items-center mb-6">
