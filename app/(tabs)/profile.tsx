@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native'; // 1. KeyboardAvoidingView සහ Platform import කළා
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -19,6 +19,7 @@ export default function ProfileScreen() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [showCardModal, setShowCardModal] = useState(false);
     const [showAddressModal, setShowAddressModal] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     // --- Form Data ---
     const [newName, setNewName] = useState('');
@@ -123,8 +124,6 @@ export default function ProfileScreen() {
     const handleUpdateAddress = async () => {
         if(!newAddress) return Alert.alert("Error", "Address required");
         try {
-            // Using default coordinates (0,0) since we're updating text only
-            // User should use map for full address with coordinates
             await updateAddress(newAddress, { latitude: 0, longitude: 0 });
             await refreshUserData();
             setShowAddressModal(false);
@@ -141,8 +140,16 @@ export default function ProfileScreen() {
         setShowEditModal(true);
     };
 
-    const handleLogout = async () => {
-        Alert.alert("Log Out", "Are you sure?", [{ text: "Cancel", style: "cancel" }, { text: "Log Out", style: 'destructive', onPress: async () => { await logout(); router.replace('/(auth)/login'); } }]);
+    // Logout Button Click Handler
+    const handleLogoutClick = () => {
+        setShowLogoutModal(true);
+    };
+
+    // Actual Logout Function
+    const performLogout = async () => {
+        setShowLogoutModal(false);
+        await logout();
+        router.replace('/(auth)/login');
     };
 
     if (!user) return <View className="flex-1 justify-center items-center bg-gray-50"><ActivityIndicator size="large" color="#D93800" /></View>;
@@ -200,20 +207,16 @@ export default function ProfileScreen() {
                     ))}
                 </View>
 
-                <TouchableOpacity onPress={handleLogout} className="mt-auto mb-10 bg-red-50 p-4 rounded-2xl flex-row justify-center items-center border border-red-100">
+                <TouchableOpacity onPress={handleLogoutClick} className="mt-auto mb-10 bg-red-50 p-4 rounded-2xl flex-row justify-center items-center border border-red-100">
                     <Ionicons name="log-out-outline" size={20} color="#FF3B30" /><Text className="ml-2 text-[#FF3B30] font-bold text-lg">Log Out</Text>
                 </TouchableOpacity>
             </ScrollView>
 
-            {/* ================= MODALS WITH KEYBOARD AVOIDING VIEW ================= */}
+            {/* ================= MODALS ================= */}
 
             {/* 1. Add Card Modal */}
             <Modal visible={showCardModal} transparent animationType="slide">
-                {/* 👇 KeyboardAvoidingView එකතු කළා */}
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={{ flex: 1 }}
-                >
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                     <View className="flex-1 justify-end bg-black/60">
                         <View className="bg-white p-6 rounded-t-3xl h-[85%]">
                             <View className="flex-row justify-between items-center mb-6">
@@ -302,6 +305,36 @@ export default function ProfileScreen() {
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
+
+            {/* Custom Logout Modal */}
+            <Modal visible={showLogoutModal} transparent animationType="fade">
+                <View className="flex-1 justify-center items-center bg-black/60">
+                    <View className="bg-white w-[85%] p-6 rounded-3xl items-center shadow-2xl">
+                        <View className="bg-red-100 p-4 rounded-full mb-4">
+                            <Ionicons name="log-out" size={40} color="#FF3B30" />
+                        </View>
+                        <Text className="text-2xl font-bold text-gray-800 mb-2">Log Out?</Text>
+                        <Text className="text-gray-500 text-center mb-6">Are you sure you want to log out of your account?</Text>
+
+                        <View className="flex-row gap-4 w-full">
+                            <TouchableOpacity
+                                onPress={() => setShowLogoutModal(false)}
+                                className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
+                            >
+                                <Text className="text-gray-700 font-bold text-lg">Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={performLogout}
+                                className="flex-1 bg-[#FF3B30] py-3 rounded-xl items-center"
+                            >
+                                <Text className="text-white font-bold text-lg">Log Out</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 }
