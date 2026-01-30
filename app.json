@@ -46,7 +46,19 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Sorry, we need camera roll permissions!"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow location access to find you."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
