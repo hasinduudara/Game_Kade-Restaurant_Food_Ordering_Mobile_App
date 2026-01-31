@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import MapView, { Marker } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 
 import { logout } from '../../services/auth';
 import { uploadProfileImage, updateUserProfile, addCard, removeCard, updateAddress } from '../../services/userService';
@@ -42,6 +42,51 @@ export default function ProfileScreen() {
         latitude: user?.location?.latitude || DEFAULT_LOC.latitude,
         longitude: user?.location?.longitude || DEFAULT_LOC.longitude
     };
+
+    // --- LEAFLET MAP HTML (Static Preview) ---
+    const mapHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+            <style>
+                body { margin: 0; padding: 0; }
+                #map { height: 100vh; width: 100vw; }
+                .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+            </style>
+        </head>
+        <body>
+            <div id="map"></div>
+            <script>
+                var map = L.map('map', { 
+                    zoomControl: false, 
+                    dragging: false, 
+                    scrollWheelZoom: false, 
+                    doubleClickZoom: false, 
+                    touchZoom: false 
+                }).setView([${userCoords.latitude}, ${userCoords.longitude}], 16);
+                
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(map);
+
+                // Add Red Marker
+                var redIcon = new L.Icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+
+                L.marker([${userCoords.latitude}, ${userCoords.longitude}], {icon: redIcon}).addTo(map);
+            </script>
+        </body>
+        </html>
+    `;
 
     // Image Upload Logic
     const pickImage = async () => {
@@ -88,7 +133,6 @@ export default function ProfileScreen() {
     // Add Card Logic
     const handleAddCard = async () => {
         const cleanNumber = cardNumber.replace(/\s/g, '');
-
         if (cleanNumber.length < 16) return Alert.alert("Error", "Invalid Card Number");
         if (cardExpiry.length < 5) return Alert.alert("Error", "Invalid Expiry Date");
         if (cardCVC.length < 3) return Alert.alert("Error", "Invalid CVC");
@@ -99,7 +143,6 @@ export default function ProfileScreen() {
             expiry: cardExpiry,
             type: cleanNumber.startsWith('4') ? "Visa" : "MasterCard"
         };
-
         try {
             await addCard(newCard);
             await refreshUserData();
@@ -134,7 +177,6 @@ export default function ProfileScreen() {
     const handleUpdateAddress = async () => {
         if(!newAddress) return Alert.alert("Error", "Address required");
         try {
-            // Keep existing coords if editing text only
             await updateAddress(newAddress, { latitude: userCoords.latitude, longitude: userCoords.longitude });
             await refreshUserData();
             setShowAddressModal(false);
@@ -181,7 +223,7 @@ export default function ProfileScreen() {
                     <TouchableOpacity onPress={openEditModal} className="mt-4 bg-gray-100 px-6 py-2 rounded-full flex-row items-center"><Ionicons name="create-outline" size={18} color="#D93800" /><Text className="ml-2 text-gray-700 font-semibold">Edit Profile</Text></TouchableOpacity>
                 </View>
 
-                {/* ADDRESS SECTION WITH MAP PREVIEW */}
+                {/* ADDRESS SECTION WITH WEBVIEW MAP PREVIEW */}
                 <View className="mb-6">
                     <View className="flex-row justify-between items-center mb-3">
                         <Text className="text-gray-800 font-bold text-lg">Delivery Address</Text>
@@ -190,25 +232,15 @@ export default function ProfileScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Map Card */}
                     <View className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-200">
                         <View className="h-40 w-full pointer-events-none">
-                            <MapView
-                                key={`${userCoords.latitude}-${userCoords.longitude}`}
+                            {/* 👇 REPLACED MAPVIEW WITH WEBVIEW */}
+                            <WebView
+                                source={{ html: mapHTML }}
                                 style={{ flex: 1 }}
-                                initialRegion={{
-                                    latitude: userCoords.latitude,
-                                    longitude: userCoords.longitude,
-                                    latitudeDelta: 0.01,
-                                    longitudeDelta: 0.01,
-                                }}
                                 scrollEnabled={false}
-                                zoomEnabled={false}
-                                pitchEnabled={false}
-                                rotateEnabled={false}
-                            >
-                                <Marker coordinate={userCoords} pinColor="red" />
-                            </MapView>
+                                pointerEvents="none"
+                            />
                         </View>
 
                         <TouchableOpacity
@@ -253,8 +285,7 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
             </ScrollView>
 
-            {/* ================= MODALS ================= */}
-
+            {/* Modals are kept as is ... */}
             {/* 1. Add Card Modal */}
             <Modal visible={showCardModal} transparent animationType="slide">
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -266,7 +297,6 @@ export default function ProfileScreen() {
                             </View>
 
                             <ScrollView showsVerticalScrollIndicator={false}>
-                                {/* Preview Card */}
                                 <View className="mb-8 shadow-xl">
                                     <LinearGradient colors={['#1A1F71', '#004e92']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="w-full h-48 rounded-2xl p-6 justify-between">
                                         <View className="flex-row justify-between items-center"><Text className="text-white/80 font-medium tracking-widest">Bank Card</Text><Text className="text-white font-bold italic text-lg">{cardNumber.startsWith('4') ? 'VISA' : 'MasterCard'}</Text></View>
@@ -279,40 +309,12 @@ export default function ProfileScreen() {
                                         </View>
                                     </LinearGradient>
                                 </View>
-
-                                {/* Inputs */}
                                 <Text className="text-gray-600 font-medium mb-2 ml-1">Card Number</Text>
-                                <View className="bg-gray-100 rounded-xl mb-4 flex-row items-center px-4 border border-gray-200">
-                                    <Ionicons name="card-outline" size={20} color="gray" />
-                                    <TextInput className="flex-1 p-4 text-gray-800 font-bold text-lg" value={cardNumber} onChangeText={handleCardNumberChange} keyboardType="numeric" placeholder="0000 0000 0000 0000" maxLength={19} />
-                                </View>
-
+                                <View className="bg-gray-100 rounded-xl mb-4 flex-row items-center px-4 border border-gray-200"><Ionicons name="card-outline" size={20} color="gray" /><TextInput className="flex-1 p-4 text-gray-800 font-bold text-lg" value={cardNumber} onChangeText={handleCardNumberChange} keyboardType="numeric" placeholder="0000 0000 0000 0000" maxLength={19} /></View>
                                 <Text className="text-gray-600 font-medium mb-2 ml-1">Card Holder Name</Text>
-                                <View className="bg-gray-100 rounded-xl mb-4 flex-row items-center px-4 border border-gray-200">
-                                    <Ionicons name="person-outline" size={20} color="gray" />
-                                    <TextInput className="flex-1 p-4 text-gray-800 font-medium" value={cardName} onChangeText={setCardName} placeholder="Name on Card" />
-                                </View>
-
-                                <View className="flex-row gap-4 mb-6">
-                                    <View className="flex-1">
-                                        <Text className="text-gray-600 font-medium mb-2 ml-1">Expiry Date</Text>
-                                        <View className="bg-gray-100 rounded-xl flex-row items-center px-4 border border-gray-200">
-                                            <Ionicons name="calendar-outline" size={20} color="gray" />
-                                            <TextInput className="flex-1 p-4 text-gray-800 font-medium" value={cardExpiry} onChangeText={handleExpiryChange} keyboardType="numeric" maxLength={5} placeholder="MM/YY" />
-                                        </View>
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="text-gray-600 font-medium mb-2 ml-1">CVC / CVV</Text>
-                                        <View className="bg-gray-100 rounded-xl flex-row items-center px-4 border border-gray-200">
-                                            <Ionicons name="lock-closed-outline" size={20} color="gray" />
-                                            <TextInput className="flex-1 p-4 text-gray-800 font-medium" value={cardCVC} onChangeText={setCardCVC} keyboardType="numeric" maxLength={3} secureTextEntry placeholder="123" />
-                                        </View>
-                                    </View>
-                                </View>
-
-                                <TouchableOpacity onPress={handleAddCard} className="bg-[#1A1F71] p-4 rounded-xl items-center shadow-md mb-20">
-                                    <Text className="text-white font-bold text-lg">Add Card Securely</Text>
-                                </TouchableOpacity>
+                                <View className="bg-gray-100 rounded-xl mb-4 flex-row items-center px-4 border border-gray-200"><Ionicons name="person-outline" size={20} color="gray" /><TextInput className="flex-1 p-4 text-gray-800 font-medium" value={cardName} onChangeText={setCardName} placeholder="Name on Card" /></View>
+                                <View className="flex-row gap-4 mb-6"><View className="flex-1"><Text className="text-gray-600 font-medium mb-2 ml-1">Expiry Date</Text><View className="bg-gray-100 rounded-xl flex-row items-center px-4 border border-gray-200"><Ionicons name="calendar-outline" size={20} color="gray" /><TextInput className="flex-1 p-4 text-gray-800 font-medium" value={cardExpiry} onChangeText={handleExpiryChange} keyboardType="numeric" maxLength={5} placeholder="MM/YY" /></View></View><View className="flex-1"><Text className="text-gray-600 font-medium mb-2 ml-1">CVC / CVV</Text><View className="bg-gray-100 rounded-xl flex-row items-center px-4 border border-gray-200"><Ionicons name="lock-closed-outline" size={20} color="gray" /><TextInput className="flex-1 p-4 text-gray-800 font-medium" value={cardCVC} onChangeText={setCardCVC} keyboardType="numeric" maxLength={3} secureTextEntry placeholder="123" /></View></View></View>
+                                <TouchableOpacity onPress={handleAddCard} className="bg-[#1A1F71] p-4 rounded-xl items-center shadow-md mb-20"><Text className="text-white font-bold text-lg">Add Card Securely</Text></TouchableOpacity>
                             </ScrollView>
                         </View>
                     </View>
@@ -358,24 +360,12 @@ export default function ProfileScreen() {
                         <Text className="text-gray-500 text-center mb-6">Are you sure you want to log out of your account?</Text>
 
                         <View className="flex-row gap-4 w-full">
-                            <TouchableOpacity
-                                onPress={() => setShowLogoutModal(false)}
-                                className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
-                            >
-                                <Text className="text-gray-700 font-bold text-lg">Cancel</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                onPress={performLogout}
-                                className="flex-1 bg-[#FF3B30] py-3 rounded-xl items-center"
-                            >
-                                <Text className="text-white font-bold text-lg">Log Out</Text>
-                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowLogoutModal(false)} className="flex-1 bg-gray-100 py-3 rounded-xl items-center"><Text className="text-gray-700 font-bold text-lg">Cancel</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={performLogout} className="flex-1 bg-[#FF3B30] py-3 rounded-xl items-center"><Text className="text-white font-bold text-lg">Log Out</Text></TouchableOpacity>
                         </View>
                     </View>
                 </View>
             </Modal>
-
         </SafeAreaView>
     );
 }

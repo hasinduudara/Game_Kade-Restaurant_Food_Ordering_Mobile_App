@@ -1,155 +1,156 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import MapView from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { updateAddress } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 
-// Default Location (Colombo)
-const DEFAULT_REGION = {
-    latitude: 6.9271,
-    longitude: 79.8612,
-    latitudeDelta: 0.005,
-    longitudeDelta: 0.005,
-};
-
 export default function MapScreen() {
     const { refreshUserData } = useAuth();
-
-    // State Variables
-    const [region, setRegion] = useState(DEFAULT_REGION);
+    const [location, setLocation] = useState<any>(null);
     const [address, setAddress] = useState("Locating...");
-    const [isSaving, setIsSaving] = useState(false);
-    const [isMapReady, setIsMapReady] = useState(false);
+    const [saving, setSaving] = useState(false);
 
-    // Debounce for address fetching (to avoid too many API calls)
-    const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Webview Ref
+    const webViewRef = useRef<WebView>(null);
 
     useEffect(() => {
         (async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
                 Alert.alert("Permission Denied", "Allow location access to find you.");
-                setIsMapReady(true);
                 return;
             }
 
-            let location = await Location.getCurrentPositionAsync({});
-            setRegion({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-            });
+            let currentLocation = await Location.getCurrentPositionAsync({});
+            const { latitude, longitude } = currentLocation.coords;
 
-            // Initial Fetch
-            fetchAddress(location.coords.latitude, location.coords.longitude);
-            setIsMapReady(true);
+            // Set initial location
+            setLocation({ lat: latitude, lng: longitude });
+            fetchAddressFromOSM(latitude, longitude);
         })();
     }, []);
 
-    // Fetch Address from Nominatim (OpenStreetMap)
-    const fetchAddress = async (lat: number, lng: number) => {
-        setAddress("Fetching address...");
+    // 1. Address Fetching (OSM - Free)
+    const fetchAddressFromOSM = async (lat: number, lng: number) => {
         try {
+            setAddress("Fetching address...");
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`,
-                {
-                    headers: {
-                        'User-Agent': 'GameKade-App/1.0',
-                    }
-                }
+                { headers: { 'User-Agent': 'GameKade-App/1.0' } }
             );
             const data = await response.json();
-
             if (data && data.display_name) {
                 const addObj = data.address;
-                // Create a clean short address
                 const shortAddress = `${addObj.road || ''} ${addObj.suburb || ''} ${addObj.city || addObj.town || ''}`;
-                const finalAddress = shortAddress.trim() === '' ? data.display_name.split(',')[0] : shortAddress;
-                setAddress(finalAddress.trim());
-            } else {
-                setAddress("Unknown Location");
+                setAddress(shortAddress.trim() === '' ? data.display_name.split(',')[0] : shortAddress);
             }
-        } catch {
+        } catch (error) {
             setAddress("Location Selected");
         }
     };
 
-    // Handle Map Movement
-    const onRegionChangeComplete = (newRegion: any) => {
-        setRegion(newRegion);
-
-        // Debounce: Wait 1 sec after user stops moving map to fetch address
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-        typingTimeoutRef.current = setTimeout(() => {
-            fetchAddress(newRegion.latitude, newRegion.longitude);
-        }, 800);
-    };
-
-    const handleConfirmLocation = async () => {
-        setIsSaving(true);
+    // 2. Handle Message from Map (When user drags map)
+    const handleMessage = (event: any) => {
         try {
-            // Save Latitude, Longitude & Text Address
-            await updateAddress(address, { latitude: region.latitude, longitude: region.longitude });
-            await refreshUserData();
-            Alert.alert("Success", "Location Updated!");
-            router.back();
-        } catch {
-            Alert.alert("Error", "Could not save location.");
-        } finally {
-            setIsSaving(false);
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'moveEnd') {
+                setLocation(data.coords);
+                fetchAddressFromOSM(data.coords.lat, data.coords.lng);
+            }
+        } catch (e) {
+            console.log(e);
         }
     };
 
-    if (!isMapReady) {
-        return (
-            <View className="flex-1 justify-center items-center bg-white">
-                <ActivityIndicator size="large" color="#D93800" />
-            </View>
-        );
-    }
+    const handleConfirmLocation = async () => {
+        if (!location) return;
+        setSaving(true);
+        try {
+            await updateAddress(address, { latitude: location.lat, longitude: location.lng });
+            await refreshUserData();
+            Alert.alert("Success", "Location Updated!");
+            router.back();
+        } catch (error) {
+            Alert.alert("Error", "Could not save location.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // 3. HTML Content (Leaflet Map - 100% Free & No API Key)
+    const mapHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+            <style>
+                body { margin: 0; padding: 0; }
+                #map { height: 100vh; width: 100vw; }
+                .leaflet-control-zoom { display: none !important; }
+                .leaflet-control-attribution { display: none !important; }
+                .center-marker {
+                    position: absolute;
+                    top: 50%; left: 50%;
+                    transform: translate(-50%, -100%);
+                    z-index: 1000;
+                    pointer-events: none;
+                }
+            </style>
+        </head>
+        <body>
+            <div id="map"></div>
+            <div class="center-marker">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="#D93800">
+                    <path d="M12 0C7.58 0 4 3.58 4 8c0 5.25 7 13 7 13s7-7.75 7-13c0-4.42-3.58-8-8-8zm0 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/>
+                </svg>
+            </div>
+            <script>
+                var map = L.map('map', { zoomControl: false }).setView([${location?.lat || 6.9271}, ${location?.lng || 79.8612}], 18);
+                
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(map);
+
+                map.on('moveend', function() {
+                    var center = map.getCenter();
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'moveEnd',
+                        coords: center
+                    }));
+                });
+            </script>
+        </body>
+        </html>
+    `;
 
     return (
         <View className="flex-1 bg-white">
-            {/* 1. Map View */}
-            <MapView
-                style={{ flex: 1 }}
-                initialRegion={region}
-                showsUserLocation={true}
-                showsMyLocationButton={false}
-                onRegionChangeComplete={onRegionChangeComplete}
-                rotateEnabled={false}
-            />
-
-            {/* Center Marker (Fixed Overlay) */}
-            <View
-                className="absolute top-0 bottom-0 left-0 right-0 justify-center items-center"
-                pointerEvents="none"
-            >
-                <View className="mb-8">
-                    {/* Icon lifted slightly to point exactly at center */}
-                    <Ionicons name="location" size={40} color="#D93800" />
+            {location ? (
+                <WebView
+                    ref={webViewRef}
+                    source={{ html: mapHTML }}
+                    style={{ flex: 1 }}
+                    onMessage={handleMessage}
+                    scrollEnabled={false}
+                />
+            ) : (
+                <View className="flex-1 justify-center items-center">
+                    <ActivityIndicator size="large" color="#D93800" />
                 </View>
-            </View>
+            )}
 
-            {/* Back Button */}
-            <TouchableOpacity
-                onPress={() => router.back()}
-                className="absolute top-12 left-5 bg-white p-3 rounded-full shadow-lg z-10"
-            >
+            <TouchableOpacity onPress={() => router.back()} className="absolute top-12 left-5 bg-white p-3 rounded-full shadow-lg">
                 <Ionicons name="arrow-back" size={24} color="black" />
             </TouchableOpacity>
 
-            {/* Bottom Card */}
             <View className="absolute bottom-0 w-full bg-white rounded-t-3xl p-6 shadow-2xl pb-10">
                 <View className="w-12 h-1 bg-gray-200 rounded-full self-center mb-4" />
-
                 <Text className="text-gray-500 text-xs font-bold uppercase mb-2">Selected Location</Text>
-
                 <View className="flex-row items-center mb-6">
                     <View className="bg-orange-100 p-2 rounded-full mr-3">
                         <Ionicons name="map" size={24} color="#D93800" />
@@ -161,10 +162,10 @@ export default function MapScreen() {
 
                 <TouchableOpacity
                     onPress={handleConfirmLocation}
-                    disabled={isSaving}
+                    disabled={saving}
                     className="bg-[#D93800] p-4 rounded-2xl items-center flex-row justify-center shadow-lg shadow-orange-200"
                 >
-                    {isSaving ? (
+                    {saving ? (
                         <ActivityIndicator color="white" />
                     ) : (
                         <>
