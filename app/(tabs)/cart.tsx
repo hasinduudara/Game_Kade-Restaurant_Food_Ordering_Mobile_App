@@ -34,7 +34,7 @@ export default function CartScreen() {
     return (
         <View className="flex-1 bg-gray-50">
             {/* Header */}
-            <View className="bg-white px-6 pt-12 pb-4 shadow-sm">
+            <View className="bg-white px-6 pt-6 pb-4 shadow-sm">
                 <Text className="text-2xl font-bold text-gray-800">My Cart</Text>
                 <Text className="text-gray-500">{items.length} items</Text>
             </View>
