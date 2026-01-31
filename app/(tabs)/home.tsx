@@ -36,7 +36,7 @@ export default function HomeScreen() {
         <View className="flex-1 bg-gray-50">
 
             {/* Header Section */}
-            <View className="bg-white px-6 pt-12 pb-4 shadow-sm z-10">
+            <View className="bg-white px-6 pt-6 pb-4 shadow-sm z-10">
                 <View className="flex-row justify-between items-center">
                     <TouchableOpacity onPress={() => router.push('/map')}>
                         <Text className="text-gray-500 text-sm font-medium">Deliver to</Text>
@@ -154,7 +154,7 @@ export default function HomeScreen() {
                 </View>
             </ScrollView>
 
-            {/* 👇 4. Success Modal */}
+            {/* 4. Success Modal */}
             <Modal
                 animationType="fade"
                 transparent={true}

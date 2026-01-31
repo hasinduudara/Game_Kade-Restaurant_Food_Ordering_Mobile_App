@@ -405,7 +405,7 @@ export default function OrdersScreen() {
 
     // HISTORY VIEW (With Loading)
     return (
-        <View className="flex-1 bg-gray-50 pt-12 px-6">
+        <View className="flex-1 bg-gray-50 pt-6 px-6">
             <View className="flex-row justify-between items-center mb-6">
                 <Text className="text-2xl font-bold text-gray-800">My Orders</Text>
                 <TouchableOpacity onPress={() => setViewMode('history')}><Ionicons name="refresh" size={24} color="black" /></TouchableOpacity>
