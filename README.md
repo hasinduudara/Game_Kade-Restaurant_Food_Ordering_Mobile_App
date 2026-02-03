@@ -103,13 +103,7 @@ Game-Kade/
 
 ## 📸 Screenshots
 
-![Screenshot_20260201-185259](https://github.com/user-attachments/assets/5ac31996-f139-4cd9-9140-355c8b9bf199)
-
-![Screenshot_20260201-185259](https://github.com/user-attachments/assets/ef4fff9b-126e-4d3e-ba3b-4cc99cf5e220)
-
-![Screenshot_20260201-185359](https://github.com/user-attachments/assets/a0bf87bc-8a30-45b9-a690-ccee6435af4d)
-
-![Screenshot_20260201-185423](https://github.com/user-attachments/assets/9511529b-4f78-4e9f-9bdd-19acce416bec)
+<img width="1376" height="768" alt="resturent-app" src="https://github.com/user-attachments/assets/faf70ec1-555f-4f9e-9535-787dae388dd2" />
 
 ## 🔐 Environment Variables
 
